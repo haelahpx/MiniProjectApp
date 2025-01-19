@@ -439,6 +439,22 @@ def main(page: ft.Page):
         result = processor.apply_gamma_correction(float(gamma_slider.value))
         update_image_display(result)
 
+    def apply_border_padding():
+    # Ambil nilai slider dan warna dari input
+        border_thickness = border_slider.value
+        padding = padding_slider.value
+        border_color = border_color_field.value if border_color_field.value else "#000000"
+        padding_color = padding_color_field.value if padding_color_field.value else "#FFFFFF"
+
+        try:
+            # Terapkan border dan padding dengan warna ke container
+            image_container.border = ft.border.all(border_thickness, border_color)
+            image_container.bgcolor = padding_color
+            image_container.padding = padding
+            page.update()
+        except Exception as ex:
+            print(f"Error applying border and padding: {ex}")
+
     # Create file pickers
     file_picker = ft.FilePicker(on_result=handle_file_picker_result)
     overlay_picker = ft.FilePicker(on_result=handle_overlay_picker_result)
@@ -481,6 +497,24 @@ def main(page: ft.Page):
         min=0, max=1, value=0.5, label="Overlay Opacity",
         on_change=on_overlay_change
     )
+    border_slider = ft.Slider(
+        min=0, max=50, value=1, label="Border Thickness",
+        on_change=lambda e: apply_border_padding()
+    )
+    padding_slider = ft.Slider(
+        min=0, max=50, value=1, label="Padding",
+        on_change=lambda e: apply_border_padding()
+    )
+    border_color_field = ft.TextField(
+        label="Border Color (Hex)", 
+        hint_text="e.g., #FF5733",
+        on_change=lambda e: apply_border_padding()
+    )
+    padding_color_field = ft.TextField(
+        label="Padding Color (Hex)", 
+        hint_text="e.g., #FFF",
+        on_change=lambda e: apply_border_padding()
+    )
     spatial_kernel_slider = ft.Slider(min=3, max=15, value=3, label="Kernel Size")
     edge_threshold1_slider = ft.Slider(min=0, max=255, value=100, label="Threshold 1")
     edge_threshold2_slider = ft.Slider(min=0, max=255, value=200, label="Threshold 2")
@@ -522,6 +556,7 @@ def main(page: ft.Page):
         rotation_slider,
         ft.Text("Transforms", size=16, weight=ft.FontWeight.BOLD),
         scale_slider,
+        ft.Text("Flip", size=16, weight=ft.FontWeight.BOLD),
         ft.Row([
             ft.IconButton(
                 icon=ft.icons.FLIP, 
@@ -535,7 +570,15 @@ def main(page: ft.Page):
                 on_click=lambda _: update_image_display(processor.flip('diagonal'))
             ),
         ], spacing=10),
-], spacing=10)
+    ], spacing=10)
+
+    border_padding_panel = ft.Column([
+        ft.Text("Border and Padding", size=16, weight=ft.FontWeight.BOLD),
+        border_slider,
+        border_color_field,
+        padding_slider,
+        padding_color_field,
+    ], spacing=10)
 
 
     color_effects_panel = ft.Column([
@@ -640,6 +683,7 @@ def main(page: ft.Page):
             enhancement_panel,
             segmentation_panel,
             binary_panel,
+            border_padding_panel,
         ],
         spacing=20,
         visible=False,
