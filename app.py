@@ -86,13 +86,6 @@ class ImageProcessor:
         rows, cols = self.current_image.shape[:2]
         M = cv2.getRotationMatrix2D((cols/2, rows/2), angle, 1)
         return cv2.warpAffine(self.current_image, M, (cols, rows))
-
-    def adjust_brightness(self, value):
-        if self.current_image is None:
-            return None
-        hsv = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2HSV)
-        hsv[:,:,2] = cv2.add(hsv[:,:,2], value)
-        return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
     
     def adjust_contrast(self, factor):
         if self.current_image is None:
@@ -189,10 +182,21 @@ def main(page: ft.Page):
     # Slider change handlers
     def on_brightness_change(e):
         try:
-            result = processor.adjust_brightness(float(e.control.value))
+            if processor.current_image is None:
+                return  # Ensure there's an image to process
+
+            # Adjust brightness directly
+            value = float(e.control.value)
+            hsv = cv2.cvtColor(processor.current_image, cv2.COLOR_BGR2HSV)
+            hsv[:, :, 2] = cv2.add(hsv[:, :, 2], value)
+            result = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+            # Update the image display
             update_image_display(result)
+
         except Exception as ex:
             page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error adjusting brightness: {str(ex)}")))
+
 
     def on_contrast_change(e):
         try:
@@ -287,37 +291,48 @@ def main(page: ft.Page):
     # Create tool panels
     basic_adjustments = ft.Column([
         ft.Text("Basic Adjustments", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("      Brightness", size=14, weight=ft.FontWeight.BOLD),
         brightness_slider,
+        ft.Text("      Contrast", size=14, weight=ft.FontWeight.BOLD),
         contrast_slider,
+        ft.Text("      Blur", size=14, weight=ft.FontWeight.BOLD),
         blur_slider,
     ], spacing=10)
 
     color_adjustments = ft.Column([
         ft.Text("Color Adjustments", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("      Red", size=14, weight=ft.FontWeight.BOLD),
         red_slider,
+        ft.Text("      Green", size=14, weight=ft.FontWeight.BOLD),
         green_slider,
+        ft.Text("      Blue", size=14, weight=ft.FontWeight.BOLD),
         blue_slider,
     ], spacing=10)
 
     edge_detection = ft.Column([
         ft.Text("Edge Detection", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("      Edge Threshold 1", size=14, weight=ft.FontWeight.BOLD),
         edge_threshold1_slider,
+        ft.Text("      Edge Threshold 2", size=14, weight=ft.FontWeight.BOLD),
         edge_threshold2_slider,
     ], spacing=10)
 
     transform_controls = ft.Column([
         ft.Text("Transforms", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("      Rotation", size=14, weight=ft.FontWeight.BOLD),
         rotation_slider,
+        ft.Text("      Scale", size=14, weight=ft.FontWeight.BOLD),
         scale_slider,
     ], spacing=10)
 
     segmentation_controls = ft.Column([
         ft.Text("Segmentation", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("      K-Means", size=14, weight=ft.FontWeight.BOLD),
         kmeans_slider,
     ], spacing=10)
 
     # Tools column with all controls
-    tools_column = ft.Column(
+    tools_column = ft.ListView(
         [
             ft.ElevatedButton("Reset Image", on_click=reset_image),
             basic_adjustments,
@@ -327,9 +342,9 @@ def main(page: ft.Page):
             segmentation_controls,
         ],
         spacing=20,
-        scroll=ft.ScrollMode.AUTO,
         visible=False,
         width=300,
+        height=page.window_height,
     )
 
     # Main layout
@@ -355,6 +370,7 @@ def main(page: ft.Page):
             ], spacing=20, vertical_alignment=ft.CrossAxisAlignment.START),
         ], spacing=20)
     )
+
 
     # Add keyboard shortcuts
     def on_keyboard(e: ft.KeyboardEvent):
