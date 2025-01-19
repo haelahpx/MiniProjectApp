@@ -124,16 +124,16 @@ def main(page: ft.Page):
     
     # Initialize image processor
     processor = ImageProcessor()
-    
+
     # Image display container
     image_container = ft.Container(
-        content=None,
+        content=ft.Stack([]),  # Use a Stack to overlay the selection rectangle
         alignment=ft.alignment.center,
         bgcolor=ft.colors.BLACK12,
         border_radius=10,
         padding=10,
         width=800,
-        height=600
+        height=600,
     )
 
     def update_image_display(cv_image):
@@ -331,10 +331,49 @@ def main(page: ft.Page):
         kmeans_slider,
     ], spacing=10)
 
+    # Framing Section
+    frame_controls = ft.Container(
+        content=ft.Row([
+            ft.ElevatedButton("Crop", on_click=lambda e: crop_image(e)),
+            ft.ElevatedButton("Rotate", on_click=lambda e: rotate_image(e)),
+            ft.ElevatedButton("Move", on_click=lambda e: move_image(e)),
+        ], alignment=ft.MainAxisAlignment.CENTER),
+        padding=10,
+        visible=False,
+    )
+
+    # Show framing section
+    def toggle_framing(e):
+        frame_controls.visible = not frame_controls.visible
+        page.snack_bar = ft.SnackBar(ft.Text("Drag to select the area."), open=True)
+        page.update()
+
+    # Functions for crop, rotate, and move
+    def crop_image(e):
+        print("Crop logic here")
+        # Implement cropping logic using the selected rectangle
+        pass
+
+    def rotate_image(e):
+        print("Rotate logic here")
+        # Implement rotation logic for the selected rectangle
+        pass
+
+    def move_image(e):
+        print("Move logic here")
+        # Implement movement logic for the selected rectangle
+        pass
+
+
     # Tools column with all controls
     tools_column = ft.ListView(
         [
             ft.ElevatedButton("Reset Image", on_click=reset_image),
+
+            #Framing crop, rotate, and move is under the button itself
+            ft.ElevatedButton("Framing", on_click=toggle_framing),
+            frame_controls,
+
             basic_adjustments,
             color_adjustments,
             edge_detection,
