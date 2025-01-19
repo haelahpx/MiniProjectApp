@@ -376,8 +376,19 @@ def main(page: ft.Page):
         try:
             result = processor.reset_image()
             update_image_display(result)
-            reset_sliders()
-            page.update()
+            # Reset all sliders to default values
+            brightness_slider.value = 0
+            contrast_slider.value = 1
+            blur_slider.value = 1
+            edge_threshold1_slider.value = 100
+            edge_threshold2_slider.value = 200
+            red_slider.value = 1
+            green_slider.value = 1
+            blue_slider.value = 1
+            rotation_slider.value = 0
+            scale_slider.value = 1
+            kmeans_slider.value = 3
+            page.update()   
         except Exception as ex:
             page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error resetting image: {str(ex)}")))
 
@@ -507,16 +518,25 @@ def main(page: ft.Page):
     ], spacing=10)
 
     transform_panel = ft.Column([
-        ft.Text("Transforms", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("Rotation", size=16, weight=ft.FontWeight.BOLD),
         rotation_slider,
+        ft.Text("Transforms", size=16, weight=ft.FontWeight.BOLD),
         scale_slider,
         ft.Row([
-            ft.IconButton(icon=ft.icons.FLIP, 
-                         on_click=lambda _: update_image_display(processor.flip('horizontal'))),
-            ft.IconButton(icon=ft.icons.FLIP_CAMERA_ANDROID,
-                         on_click=lambda _: update_image_display(processor.flip('vertical'))),
+            ft.IconButton(
+                icon=ft.icons.FLIP, 
+                on_click=lambda _: update_image_display(processor.flip('horizontal'))
+            ),
+            ft.IconButton(
+                icon=ft.icons.FLIP_CAMERA_ANDROID,
+                on_click=lambda _: update_image_display(processor.flip('vertical'))
+            ),
+            ft.ElevatedButton("Diagonal Flip",
+                on_click=lambda _: update_image_display(processor.flip('diagonal'))
+            ),
         ], spacing=10),
-    ], spacing=10)
+], spacing=10)
+
 
     color_effects_panel = ft.Column([
         ft.Text("Color Effects", size=16, weight=ft.FontWeight.BOLD),
