@@ -5,6 +5,7 @@ import base64
 from PIL import Image as PILImage
 from io import BytesIO
 from datetime import datetime
+from flet import dropdown
 
 import image_processor
 def main(page: ft.Page):
@@ -13,21 +14,18 @@ def main(page: ft.Page):
     page.scroll = "adaptive"
     
     processor = image_processor.ImageProcessor()
-    current_image_data = None  # Store the current image data for downloading
+    current_image_data = None  
     
+    # Definisi image_container dengan expand=False
     image_container = ft.Container(
         content=None,
         alignment=ft.alignment.center,
         bgcolor=ft.colors.BLACK12,
         border_radius=10,
-        padding=10,
-        expand=True,
-        height=500,
+        expand=False  
     )
 
     ###     LEFT SECTION DETAILS (ui and logic)     ###
-    # Lines below are the code for panels with its sliders for Left Section 
-
     # Reset Image
     def reset_image(e):
         try:
@@ -54,7 +52,7 @@ def main(page: ft.Page):
         rotation_slider.value = 0
         scale_slider.value = 1.0
 
-    # Download button (Logic and Button)
+    # Download button
     def download_image(e):
         if current_image_data:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -87,7 +85,7 @@ def main(page: ft.Page):
     ], spacing=10)
 
     # Brightness and Contrast
-    brightness_slider = ft.Slider(      # Brightness slider
+    brightness_slider = ft.Slider(
         min=-100, max=100, value=0, label="Brightness",
         on_change=lambda e: update_image_display(
             processor.adjust_brightness_contrast(
@@ -95,7 +93,7 @@ def main(page: ft.Page):
             )
         )
     )
-    contrast_slider = ft.Slider(        # Contrast slider
+    contrast_slider = ft.Slider(
         min=0.1, max=3.0, value=1.0, label="Contrast",
         on_change=lambda e: update_image_display(
             processor.adjust_brightness_contrast(
@@ -110,7 +108,7 @@ def main(page: ft.Page):
     ], spacing=10)
 
     # Color Adjustment
-    red_slider = ft.Slider(             # red slider
+    red_slider = ft.Slider(
         min=0, max=2.0, value=1.0, label="Red",
         on_change=lambda e: update_image_display(
             processor.adjust_color_channels(
@@ -118,7 +116,7 @@ def main(page: ft.Page):
             )
         )
     )
-    green_slider = ft.Slider(           # green slider
+    green_slider = ft.Slider(
         min=0, max=2.0, value=1.0, label="Green",
         on_change=lambda e: update_image_display(
             processor.adjust_color_channels(
@@ -126,7 +124,7 @@ def main(page: ft.Page):
             )
         )
     )
-    blue_slider = ft.Slider(            # blue slider
+    blue_slider = ft.Slider(
         min=0, max=2.0, value=1.0, label="Blue",
         on_change=lambda e: update_image_display(
             processor.adjust_color_channels(
@@ -142,7 +140,7 @@ def main(page: ft.Page):
     ], spacing=10)
 
     # Transforming
-    rotation_slider = ft.Slider(        # rotation silder
+    rotation_slider = ft.Slider(
         min=-180, max=180, value=0, label="Rotation",
         on_change=lambda e: update_image_display(
             processor.apply_transform(
@@ -150,7 +148,7 @@ def main(page: ft.Page):
             )
         )
     )
-    scale_slider = ft.Slider(           # scale slider
+    scale_slider = ft.Slider(
         min=0.1, max=2.0, value=1.0, label="Scale",
         on_change=lambda e: update_image_display(
             processor.apply_transform(
@@ -159,14 +157,18 @@ def main(page: ft.Page):
         )
     )
     transform_panel = ft.Column([
-        ft.Text("Transforms", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("Rotation", size=16, weight=ft.FontWeight.BOLD),
         rotation_slider,
+        ft.Text("Transforms", size=16, weight=ft.FontWeight.BOLD),
         scale_slider,
+        ft.Text("Flip", size=16, weight=ft.FontWeight.BOLD),
         ft.Row([
             ft.IconButton(icon=ft.icons.FLIP, 
-                         on_click=lambda _: update_image_display(processor.flip('horizontal'))),
+                          on_click=lambda _: update_image_display(processor.flip('horizontal'))),
             ft.IconButton(icon=ft.icons.FLIP_CAMERA_ANDROID,
-                         on_click=lambda _: update_image_display(processor.flip('vertical'))),
+                          on_click=lambda _: update_image_display(processor.flip('vertical'))),
+            ft.IconButton(icon=ft.icons.CROP_ROTATE, 
+                          on_click=lambda _: update_image_display(processor.flip('diagonal'))),  
         ], spacing=10),
     ], spacing=10)
 
@@ -180,7 +182,7 @@ def main(page: ft.Page):
     ], spacing=10)
     
     # Image Overlay
-    overlay_opacity_slider = ft.Slider( # overlay slider
+    overlay_opacity_slider = ft.Slider(
         min=0, max=1, value=0.5, label="Overlay Opacity",
         on_change=lambda e: update_image_display(
             processor.overlay_image(
@@ -197,7 +199,7 @@ def main(page: ft.Page):
         overlay_opacity_slider,
     ], spacing=10)
 
-    # Spatial Filters (Logic and Slider)
+    # Spatial Filters
     def handle_spatial_filter(e):
         filter_type = e.control.text.lower().split()[0]
         kernel_size = int(spatial_kernel_slider.value)
@@ -205,7 +207,7 @@ def main(page: ft.Page):
             kernel_size += 1
         result = processor.apply_spatial_filter(filter_type, kernel_size)
         update_image_display(result)
-    spatial_kernel_slider = ft.Slider(  # spatial slider    # masih kosong
+    spatial_kernel_slider = ft.Slider(
         min=3, max=15, value=3, label="Kernel Size"
     )
     filters_panel = ft.Column([
@@ -218,17 +220,17 @@ def main(page: ft.Page):
         ], spacing=10, wrap=True),
     ], spacing=10)
 
-    # Edge Detection (logic and Ui)
+    # Edge Detection
     def handle_edge_detection(e):
         method = e.control.text.lower()
         threshold1 = float(edge_threshold1_slider.value)
         threshold2 = float(edge_threshold2_slider.value)
         result = processor.apply_edge_detection(method, threshold1, threshold2)
         update_image_display(result)
-    edge_threshold1_slider = ft.Slider( # edge threshold 1 slider       # masih kosong
+    edge_threshold1_slider = ft.Slider(
         min=0, max=255, value=100, label="Threshold 1"
     )
-    edge_threshold2_slider = ft.Slider( # edge threshold 2 slider       # masih kosong
+    edge_threshold2_slider = ft.Slider(
         min=0, max=255, value=200, label="Threshold 2"
     )
     edge_panel = ft.Column([
@@ -243,7 +245,7 @@ def main(page: ft.Page):
     ], spacing=10)
 
     # Enhancement
-    gamma_slider = ft.Slider(           # gamma slider
+    gamma_slider = ft.Slider(
         min=0.1, max=3.0, value=1.0, label="Gamma",
         on_change=lambda e: update_image_display(
             processor.apply_gamma_correction(
@@ -264,8 +266,11 @@ def main(page: ft.Page):
         gamma_slider,
     ], spacing=10)
 
-    # Segmentation (threshold, clustering, k-means, watershed)
-    threshold_slider = ft.Slider(min=0,max=255,value=127,)  # Default threshold valuelabel="Threshold Value",
+    # Segmentation
+    threshold_slider = ft.Slider(min=0, max=255, value=127)
+    kmeans_slider = ft.Slider(min=2, max=20, value=5)
+    clustering_slider = ft.Slider(min=2, max=20, value=10)
+    
     threshold_panel = ft.Column([
         ft.Text("Threshold Segmentation", size=16, weight=ft.FontWeight.BOLD),
         threshold_slider,
@@ -276,20 +281,7 @@ def main(page: ft.Page):
                                 n_segments=int(threshold_slider.value)
                             )))
     ], spacing=10)
-    # Threshold Panel
-    threshold_slider = ft.Slider(min=0,max=255,value=127,)  # Default threshold valuelabel="Threshold Value",
-    threshold_panel = ft.Column([
-        ft.Text("Threshold Segmentation", size=16, weight=ft.FontWeight.BOLD),
-        threshold_slider,
-        ft.ElevatedButton("Apply Threshold",
-                        on_click=lambda _: update_image_display(
-                            processor.apply_segmentation(
-                                method='threshold',
-                                n_segments=int(threshold_slider.value)
-                            )))
-    ], spacing=10)
-    # K-means Panel
-    kmeans_slider = ft.Slider(min=2,max=20,value=5,)  # Default number of segmentslabel="Number of Clusters",
+    
     kmeans_panel = ft.Column([
         ft.Text("K-means Segmentation", size=16, weight=ft.FontWeight.BOLD),
         kmeans_slider,
@@ -300,15 +292,14 @@ def main(page: ft.Page):
                                 n_segments=int(kmeans_slider.value)
                             )))
     ], spacing=10)
-    # Watershed Panel
+    
     watershed_panel = ft.Column([
         ft.Text("Watershed Segmentation", size=16, weight=ft.FontWeight.BOLD),
         ft.ElevatedButton("Apply Watershed",
                         on_click=lambda _: update_image_display(
                             processor.apply_segmentation(method='watershed')))
     ], spacing=10)
-    # Clustering Panel
-    clustering_slider = ft.Slider(min=2,max=20,value=10,)  # Default number of segmentslabel="Number of Clusters",
+    
     clustering_panel = ft.Column([
         ft.Text("Clustering", size=16, weight=ft.FontWeight.BOLD),
         clustering_slider,
@@ -319,6 +310,7 @@ def main(page: ft.Page):
                                 n_segments=int(clustering_slider.value)
                             )))
     ], spacing=10)
+    
     segmentation_panel = ft.Column([
         ft.Text("Segmentation", size=16, weight=ft.FontWeight.BOLD),
         threshold_panel,
@@ -327,13 +319,13 @@ def main(page: ft.Page):
         clustering_panel
     ], spacing=20)
 
-    # Binary Operations (Logic and Sliders)
+    # Binary Operations
     def handle_morphological_operation(e):
         operation = e.control.text.lower()
         kernel_size = int(morph_kernel_slider.value)
         result = processor.apply_morphological_operation(operation, kernel_size)
         update_image_display(result)
-    morph_kernel_slider = ft.Slider(    # morph slider                  # masih kosong
+    morph_kernel_slider = ft.Slider(
         min=3, max=15, value=3, label="Kernel Size"
     )
     binary_panel = ft.Column([
@@ -353,22 +345,31 @@ def main(page: ft.Page):
         ], spacing=10, wrap=True),
     ], spacing=10)
 
-    # Border and Pading (Logics, TextFields and Sliders)
+    # Border and Padding
     def apply_border_padding():
-    # Ambil nilai slider dan warna dari input
+        if image_container.content is None:
+            return
+            
+        # Ambil nilai slider
         border_thickness = border_slider.value
-        padding = padding_slider.value
+        padding_size = padding_slider.value
         border_color = border_color_field.value if border_color_field.value else "#000000"
         padding_color = padding_color_field.value if padding_color_field.value else "#FFFFFF"
+        
+        # Update container properties
+        image_container.border = ft.border.all(border_thickness, border_color)
+        image_container.bgcolor = padding_color
+        image_container.padding = padding_size
+        
+        # Adjust container size to accommodate padding and border
+        if hasattr(image_container.content, 'width') and hasattr(image_container.content, 'height'):
+            total_width = image_container.content.width + (2 * padding_size) + (2 * border_thickness)
+            total_height = image_container.content.height + (2 * padding_size) + (2 * border_thickness)
+            image_container.width = total_width
+            image_container.height = total_height
+        
+        page.update()
 
-        try:
-            # Terapkan border dan padding dengan warna ke container
-            image_container.border = ft.border.all(border_thickness, border_color)
-            image_container.bgcolor = padding_color
-            image_container.padding = padding
-            page.update()
-        except Exception as ex:
-            print(f"Error applying border and padding: {ex}")
     border_slider = ft.Slider(
         min=0, max=50, value=1, label="Border Thickness",
         on_change=lambda e: apply_border_padding()
@@ -403,8 +404,68 @@ def main(page: ft.Page):
         ft.ElevatedButton("DCT Compress", 
                          on_click=lambda _: update_image_display(processor.dct_compress())),
     ], spacing=10)
+
+     # Add to your main function
+    def handle_feature_detection(e):
+        if processor.current_image is None:
+            page.show_snack_bar(ft.SnackBar(content=ft.Text("No image loaded. Please load an image first.")))
+            return
+
+        try:
+            method = feature_detection_dropdown.value
+            print(f"Selected method: {method}")  # Debugging
+            result = processor.detect_features(method)
+            update_image_display(result)
+        except Exception as ex:
+            import traceback
+            traceback.print_exc()  # Debugging
+            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error detecting features: {str(ex)}")))
+
+
+    def handle_template_picker_result(e: ft.FilePickerResultEvent):
+        if not e.files:
+            return
+
+        file_path = e.files[0].path
+        try:
+            result = processor.template_matching(file_path)
+            update_image_display(result)
+        except Exception as ex:
+            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error matching template: {str(ex)}")))
+
+    # Feature detection dropdown
+    feature_detection_dropdown = ft.Dropdown(
+        width=200,
+        options=[
+            ft.dropdown.Option("sift", "SIFT"),
+            ft.dropdown.Option("orb", "ORB"),
+        ],
+        value="sift",
+    )
+
+    # Template picker
+    template_picker = ft.FilePicker(on_result=handle_template_picker_result)
+    page.overlay.append(template_picker)
+
+    # Image Matching panel
+    image_matching_panel = ft.Column([
+        ft.Text("Image Matching", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("Feature Detection", size=14),
+        ft.Column([
+            feature_detection_dropdown,
+            ft.ElevatedButton("Detect Features", on_click=handle_feature_detection),
+        ], spacing=10),
+        ft.Text("Template Matching", size=14),
+        ft.ElevatedButton(
+            "Load Template Image",
+            on_click=lambda _: template_picker.pick_files(
+                allowed_extensions=["png", "jpg", "jpeg", "bmp"]
+            )
+        ),
+    ], spacing=10)
+
     
-    # LEFT SECTION #
+    # LEFT SECTION
     tools_column = ft.Column(
         [
             ft.Row([
@@ -423,18 +484,14 @@ def main(page: ft.Page):
             segmentation_panel,
             binary_panel,
             border_padding_panel,
-            image_compressor_panel
+            image_compressor_panel,
+            image_matching_panel  
         ],
         spacing=20,
         visible=False,
         scroll=ft.ScrollMode.AUTO,
         height=page.window_height,
     )
-
-
-
-    ###     MAIN LAYOUT (ui and layout)    ###
-    # Lines below are the code for Main Frame 
 
     # Create responsive layout
     def create_responsive_layout():
@@ -444,8 +501,6 @@ def main(page: ft.Page):
         tools_column.width = tools_width
         tools_column.height = page.window_height
         
-        image_container.width = content_width
-        
         page.update()
 
     def on_resize(e):
@@ -453,7 +508,7 @@ def main(page: ft.Page):
         
     page.on_resize = on_resize
     
-    # Create file pickers (Logic and UI)
+    # Updated image display function
     def update_image_display(cv_image):
         if cv_image is None:
             return
@@ -466,22 +521,34 @@ def main(page: ft.Page):
         
         # Convert to PIL and resize to fit within 800x600
         pil_image = PILImage.fromarray(cv_image)
-        # processor.__init__.self.current_image = pil_image
         pil_image.thumbnail((800, 600))
         
-        # Encode the image to Base64
+        # Store for download
         buffered = BytesIO()
         pil_image.save(buffered, format="PNG")
-        img_base64 = base64.b64encode(buffered.getvalue()).decode()
+        global current_image_data
+        current_image_data = buffered.getvalue()
         
-        # Update the GUI with the image
-        image_container.content = ft.Image(
+        # Encode for display
+        img_base64 = base64.b64encode(current_image_data).decode()
+        
+        # Create new image content
+        image_content = ft.Image(
             src_base64=img_base64,
-            fit=ft.ImageFit.CONTAIN
+            fit=ft.ImageFit.CONTAIN,
+            width=pil_image.width,
+            height=pil_image.height
         )
-
+        
+        # Update container with new image
+        image_container.width = pil_image.width
+        image_container.height = pil_image.height
+        image_container.content = image_content
+        
+        # Apply current border and padding settings
+        apply_border_padding()
+        
         page.update()
-
 
     def handle_file_picker_result(e: ft.FilePickerResultEvent):
         if not e.files:
@@ -492,10 +559,11 @@ def main(page: ft.Page):
             cv_image = processor.load_image(file_path)
             update_image_display(cv_image)
             tools_column.visible = True
-            download_button.disabled = False  # Enable download button
+            download_button.disabled = False
             page.update()
         except Exception as ex:
             page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error loading image: {str(ex)}")))
+
     def handle_overlay_picker_result(e: ft.FilePickerResultEvent):
         if not e.files:
             return
@@ -506,6 +574,7 @@ def main(page: ft.Page):
             update_image_display(processor.overlay_images(float(overlay_opacity_slider.value)))
         except Exception as ex:
             page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error loading overlay: {str(ex)}")))
+
     file_picker = ft.FilePicker(on_result=handle_file_picker_result)
     overlay_picker = ft.FilePicker(on_result=handle_overlay_picker_result)
     page.overlay.extend([file_picker, overlay_picker])

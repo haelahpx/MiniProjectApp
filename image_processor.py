@@ -323,4 +323,75 @@ class ImageProcessor:
         # Return the compressed image as a numpy array
         return compressed_image
 
+    def detect_features(self, method='sift'):
+        if self.current_image is None:
+            raise ValueError("No image loaded for feature detection.")
+        
+        # Convert to grayscale
+        gray = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
 
+        if method.lower() == 'sift':
+            sift = cv2.SIFT_create()
+            keypoints, descriptors = sift.detectAndCompute(gray, None)
+        elif method.lower() == 'orb':
+            orb = cv2.ORB_create()
+            keypoints, descriptors = orb.detectAndCompute(gray, None)
+        else:
+            raise ValueError(f"Unknown method: {method}")
+
+        # Draw keypoints
+        result = cv2.drawKeypoints(
+            self.current_image,
+            keypoints,
+            None,
+            color=(0, 255, 0),
+            flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS
+        )
+        return result
+
+
+    def template_matching(self, template_path, method=cv2.TM_CCOEFF_NORMED):
+        """
+        Perform template matching to find a template image within the current image.
+
+        Args:
+            template_path (str): Path to the template image file.
+            method (int): OpenCV template matching method.
+
+        Returns:
+            result_image (ndarray): Image with the matching region highlighted.
+        """
+        if self.current_image is None:
+            raise ValueError("No image loaded for template matching.")
+
+        # Read the template image
+        template = cv2.imread(template_path, cv2.IMREAD_COLOR)
+        if template is None:
+            raise ValueError(f"Could not read template image from {template_path}")
+
+        # Convert the template to grayscale
+        gray_template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+
+        # Convert the current image to grayscale
+        gray_current_image = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
+
+        # Perform template matching
+        result = cv2.matchTemplate(gray_current_image, gray_template, method)
+        h, w = gray_template.shape[:2]
+
+        # Get the best match location
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+        # Determine the top-left corner based on the method used
+        if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
+            top_left = min_loc
+        else:
+            top_left = max_loc
+
+        bottom_right = (top_left[0] + w, top_left[1] + h)
+
+        # Draw a rectangle around the matched region
+        result_image = self.current_image.copy()
+        cv2.rectangle(result_image, top_left, bottom_right, (0, 255, 0), 2)
+
+        return result_image
