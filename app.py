@@ -405,63 +405,53 @@ def main(page: ft.Page):
                          on_click=lambda _: update_image_display(processor.dct_compress())),
     ], spacing=10)
 
-     # Add to your main function
-    def handle_feature_detection(e):
-        if processor.current_image is None:
-            page.show_snack_bar(ft.SnackBar(content=ft.Text("No image loaded. Please load an image first.")))
-            return
 
-        try:
-            method = feature_detection_dropdown.value
-            print(f"Selected method: {method}")  # Debugging
-            result = processor.detect_features(method)
-            update_image_display(result)
-        except Exception as ex:
-            import traceback
-            traceback.print_exc()  # Debugging
-            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error detecting features: {str(ex)}")))
-
+    template_picker = ft.FilePicker(
+        on_result=lambda e: handle_template_picker_result(e)
+    )
+    page.overlay.append(template_picker)
 
     def handle_template_picker_result(e: ft.FilePickerResultEvent):
         if not e.files:
+            page.show_snack_bar(ft.SnackBar(content=ft.Text("No file selected.")))
             return
-
+        
         file_path = e.files[0].path
         try:
-            result = processor.template_matching(file_path)
-            update_image_display(result)
+            if matching_method.value == "Template Matching":
+                result = processor.template_matching(file_path)
+            else:
+                feature_method = "sift" if matching_method.value == "SIFT" else "orb"
+                result = processor.detect_and_match_features(file_path, method=feature_method)
+            
+            if result is not None:
+                update_image_display(result)
+            else:
+                raise Exception("Failed to process image matching.")
         except Exception as ex:
-            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error matching template: {str(ex)}")))
+            page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error in image matching: {str(ex)}")))
 
-    # Feature detection dropdown
-    feature_detection_dropdown = ft.Dropdown(
+
+    matching_method = ft.Dropdown(
+        label="Matching Method",
         width=200,
         options=[
-            ft.dropdown.Option("sift", "SIFT"),
-            ft.dropdown.Option("orb", "ORB"),
+            ft.dropdown.Option("Template Matching"),
+            ft.dropdown.Option("SIFT"),
+            ft.dropdown.Option("ORB")
         ],
-        value="sift",
+        value="Template Matching"
     )
 
-    # Template picker
-    template_picker = ft.FilePicker(on_result=handle_template_picker_result)
-    page.overlay.append(template_picker)
-
-    # Image Matching panel
     image_matching_panel = ft.Column([
         ft.Text("Image Matching", size=16, weight=ft.FontWeight.BOLD),
-        ft.Text("Feature Detection", size=14),
-        ft.Column([
-            feature_detection_dropdown,
-            ft.ElevatedButton("Detect Features", on_click=handle_feature_detection),
-        ], spacing=10),
-        ft.Text("Template Matching", size=14),
+        matching_method,
         ft.ElevatedButton(
-            "Load Template Image",
+            "Select Template Image",
             on_click=lambda _: template_picker.pick_files(
                 allowed_extensions=["png", "jpg", "jpeg", "bmp"]
             )
-        ),
+        )
     ], spacing=10)
 
     

@@ -239,11 +239,10 @@ class ImageProcessor:
             return self.current_image
 
         elif method == 'threshold':
-            if len(self.current_image.shape) == 3:  # If the image is not grayscale
+            if len(self.current_image.shape) == 3:  
                 img_array = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
             else:
                 img_array = self.current_image
-            # Apply a threshold
             threshold_value = n_segments
             max_value = 255  # Value to assign to pixels that meet the threshold condition
             _, thresholded_image = cv2.threshold(img_array, threshold_value, max_value, cv2.THRESH_BINARY)
@@ -255,10 +254,8 @@ class ImageProcessor:
             else:
                 img_array = self.current_image
             pixels = img_array.reshape((-1, 3))
-            # Convert to float32 for KMeans
             pixels = np.float32(pixels)
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
-            # Perform KMeans clustering
             _, labels, centers = cv2.kmeans(
                 pixels,
                 n_segments,
@@ -273,13 +270,11 @@ class ImageProcessor:
             return clustered_image
             
 
-    # Lossless Compression using Run-Length Encoding (RLE)
     def rle_compress(self):
         if self.current_image is None:
             print("No image loaded.")
             return None
-        # grayscale using cv2
-        if len(self.current_image.shape) == 3:  # If the image is not grayscale
+        if len(self.current_image.shape) == 3:  
             img_array = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
         else:
             img_array = self.current_image
@@ -304,94 +299,87 @@ class ImageProcessor:
         if self.current_image is None:
             print("No image loaded.")
             return None
-        # Ensure the image is grayscale using cv2
-        if len(self.current_image.shape) == 3:  # If the image is not grayscale
+        if len(self.current_image.shape) == 3:  
             img_array = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
         else:
             img_array = self.current_image
         img_array = img_array.astype(np.float32)
-        # Perform Discrete Cosine Transform (DCT)
         dct_result = cv2.dct(img_array)
-        # Create a quantization matrix
         quantization_matrix = np.ones_like(dct_result) * (100 - quality_factor)
-        # Quantize the DCT coefficients
         quantized_dct = np.round(dct_result / quantization_matrix) * quantization_matrix
-        # Perform the inverse DCT
         compressed_image = cv2.idct(quantized_dct)
-        # Clip values to valid range and convert to uint8
         compressed_image = np.clip(compressed_image, 0, 255).astype(np.uint8)
-        # Return the compressed image as a numpy array
         return compressed_image
 
-    def detect_features(self, method='sift'):
-        if self.current_image is None:
-            raise ValueError("No image loaded for feature detection.")
-        
-        # Convert to grayscale
-        gray = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
 
+    def detect_and_match_features(self, template_path, method='sift'):
+        if self.current_image is None:
+            return None
+            
+        template = cv2.imread(template_path)
+        if template is None:
+            return None
+            
+        img1_gray = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
+        img2_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+        
         if method.lower() == 'sift':
             sift = cv2.SIFT_create()
-            keypoints, descriptors = sift.detectAndCompute(gray, None)
+            
+            kp1, des1 = sift.detectAndCompute(img1_gray, None)
+            kp2, des2 = sift.detectAndCompute(img2_gray, None)
+            
+            FLANN_INDEX_KDTREE = 1
+            index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+            search_params = dict(checks=50)
+            flann = cv2.FlannBasedMatcher(index_params, search_params)
+            
+            matches = flann.knnMatch(des1, des2, k=2)
+            
+            good_matches = []
+            for m, n in matches:
+                if m.distance < 0.7 * n.distance:
+                    good_matches.append(m)
+                    
         elif method.lower() == 'orb':
             orb = cv2.ORB_create()
-            keypoints, descriptors = orb.detectAndCompute(gray, None)
-        else:
-            raise ValueError(f"Unknown method: {method}")
-
-        # Draw keypoints
-        result = cv2.drawKeypoints(
-            self.current_image,
-            keypoints,
-            None,
-            color=(0, 255, 0),
-            flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS
-        )
-        return result
-
+            
+            kp1, des1 = orb.detectAndCompute(img1_gray, None)
+            kp2, des2 = orb.detectAndCompute(img2_gray, None)
+            
+            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+            
+            good_matches = bf.match(des1, des2)
+            good_matches = sorted(good_matches, key=lambda x: x.distance)
+        
+        result_img = cv2.drawMatches(self.current_image, kp1, template, kp2, 
+                                    good_matches[:10], None, 
+                                    flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+        
+        return result_img
 
     def template_matching(self, template_path, method=cv2.TM_CCOEFF_NORMED):
-        """
-        Perform template matching to find a template image within the current image.
-
-        Args:
-            template_path (str): Path to the template image file.
-            method (int): OpenCV template matching method.
-
-        Returns:
-            result_image (ndarray): Image with the matching region highlighted.
-        """
         if self.current_image is None:
-            raise ValueError("No image loaded for template matching.")
-
-        # Read the template image
-        template = cv2.imread(template_path, cv2.IMREAD_COLOR)
+            raise ValueError("No current image loaded for template matching.")
+        
+        template = cv2.imread(template_path)
         if template is None:
-            raise ValueError(f"Could not read template image from {template_path}")
+            raise FileNotFoundError(f"Template image at {template_path} could not be read.")
 
-        # Convert the template to grayscale
-        gray_template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+        img_gray = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
+        template_gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
 
-        # Convert the current image to grayscale
-        gray_current_image = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
-
-        # Perform template matching
-        result = cv2.matchTemplate(gray_current_image, gray_template, method)
-        h, w = gray_template.shape[:2]
-
-        # Get the best match location
+        result = cv2.matchTemplate(img_gray, template_gray, method)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
-        # Determine the top-left corner based on the method used
         if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
             top_left = min_loc
         else:
             top_left = max_loc
 
+        h, w = template_gray.shape[:2]
         bottom_right = (top_left[0] + w, top_left[1] + h)
+        result_img = self.current_image.copy()
+        cv2.rectangle(result_img, top_left, bottom_right, (0, 255, 0), 2)
 
-        # Draw a rectangle around the matched region
-        result_image = self.current_image.copy()
-        cv2.rectangle(result_image, top_left, bottom_right, (0, 255, 0), 2)
-
-        return result_image
+        return result_img
