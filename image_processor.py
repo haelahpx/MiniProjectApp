@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+# import 
 
 class ImageProcessor:
     def __init__(self):
@@ -56,6 +57,7 @@ class ImageProcessor:
         if self.current_image is None:
             return None
         adjusted = cv2.convertScaleAbs(self.current_image, alpha=contrast, beta=brightness)
+        self.overlay_image = adjusted
         return adjusted
     
     def adjust_color_channels(self, red=1.0, green=1.0, blue=1.0):
@@ -235,3 +237,90 @@ class ImageProcessor:
             markers = cv2.watershed(self.current_image, markers)
             self.current_image[markers == -1] = [0, 0, 255]
             return self.current_image
+
+        elif method == 'threshold':
+            if len(self.current_image.shape) == 3:  # If the image is not grayscale
+                img_array = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
+            else:
+                img_array = self.current_image
+            # Apply a threshold
+            threshold_value = n_segments
+            max_value = 255  # Value to assign to pixels that meet the threshold condition
+            _, thresholded_image = cv2.threshold(img_array, threshold_value, max_value, cv2.THRESH_BINARY)
+            return thresholded_image
+        
+        elif method == 'clustering':
+            if len(self.current_image.shape) == 2:
+                img_array = cv2.cvtColor(self.current_image, cv2.COLOR_GRAY2RGB)
+            else:
+                img_array = self.current_image
+            pixels = img_array.reshape((-1, 3))
+            # Convert to float32 for KMeans
+            pixels = np.float32(pixels)
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
+            # Perform KMeans clustering
+            _, labels, centers = cv2.kmeans(
+                pixels,
+                n_segments,
+                None,
+                criteria,
+                10,
+                cv2.KMEANS_RANDOM_CENTERS
+            )
+            centers = np.uint8(centers)
+            segmented_image = centers[labels.flatten()]
+            clustered_image = segmented_image.reshape(img_array.shape)
+            return clustered_image
+            
+
+    # Lossless Compression using Run-Length Encoding (RLE)
+    def rle_compress(self):
+        if self.current_image is None:
+            print("No image loaded.")
+            return None
+        # grayscale using cv2
+        if len(self.current_image.shape) == 3:  # If the image is not grayscale
+            img_array = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
+        else:
+            img_array = self.current_image
+        flattened = img_array.flatten()
+        compressed = []
+        count = 1
+        for i in range(1, len(flattened)):
+            if flattened[i] == flattened[i - 1]:
+                count += 1
+            else:
+                compressed.append((flattened[i - 1], count))
+                count = 1
+        compressed.append((flattened[-1], count))
+        decompressed = []
+        for value, count in compressed:
+            decompressed.extend([value] * count)
+        decompressed = np.array(decompressed).reshape(img_array.shape)
+
+        return decompressed
+    
+    def dct_compress(self, quality_factor=50):
+        if self.current_image is None:
+            print("No image loaded.")
+            return None
+        # Ensure the image is grayscale using cv2
+        if len(self.current_image.shape) == 3:  # If the image is not grayscale
+            img_array = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2GRAY)
+        else:
+            img_array = self.current_image
+        img_array = img_array.astype(np.float32)
+        # Perform Discrete Cosine Transform (DCT)
+        dct_result = cv2.dct(img_array)
+        # Create a quantization matrix
+        quantization_matrix = np.ones_like(dct_result) * (100 - quality_factor)
+        # Quantize the DCT coefficients
+        quantized_dct = np.round(dct_result / quantization_matrix) * quantization_matrix
+        # Perform the inverse DCT
+        compressed_image = cv2.idct(quantized_dct)
+        # Clip values to valid range and convert to uint8
+        compressed_image = np.clip(compressed_image, 0, 255).astype(np.uint8)
+        # Return the compressed image as a numpy array
+        return compressed_image
+
+

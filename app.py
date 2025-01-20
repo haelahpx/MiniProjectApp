@@ -53,7 +53,6 @@ def main(page: ft.Page):
         blue_slider.value = 1.0
         rotation_slider.value = 0
         scale_slider.value = 1.0
-        segments_slider.value = 3
 
     # Download button (Logic and Button)
     def download_image(e):
@@ -265,25 +264,68 @@ def main(page: ft.Page):
         gamma_slider,
     ], spacing=10)
 
-    # Segmentation
-    segments_slider = ft.Slider(        # segments slider               # masih kosong
-        min=2, max=8, value=3, label="Segments"
-    )
+    # Segmentation (threshold, clustering, k-means, watershed)
+    threshold_slider = ft.Slider(min=0,max=255,value=127,)  # Default threshold valuelabel="Threshold Value",
+    threshold_panel = ft.Column([
+        ft.Text("Threshold Segmentation", size=16, weight=ft.FontWeight.BOLD),
+        threshold_slider,
+        ft.ElevatedButton("Apply Threshold",
+                        on_click=lambda _: update_image_display(
+                            processor.apply_segmentation(
+                                method='threshold',
+                                n_segments=int(threshold_slider.value)
+                            )))
+    ], spacing=10)
+    # Threshold Panel
+    threshold_slider = ft.Slider(min=0,max=255,value=127,)  # Default threshold valuelabel="Threshold Value",
+    threshold_panel = ft.Column([
+        ft.Text("Threshold Segmentation", size=16, weight=ft.FontWeight.BOLD),
+        threshold_slider,
+        ft.ElevatedButton("Apply Threshold",
+                        on_click=lambda _: update_image_display(
+                            processor.apply_segmentation(
+                                method='threshold',
+                                n_segments=int(threshold_slider.value)
+                            )))
+    ], spacing=10)
+    # K-means Panel
+    kmeans_slider = ft.Slider(min=2,max=20,value=5,)  # Default number of segmentslabel="Number of Clusters",
+    kmeans_panel = ft.Column([
+        ft.Text("K-means Segmentation", size=16, weight=ft.FontWeight.BOLD),
+        kmeans_slider,
+        ft.ElevatedButton("Apply K-means",
+                        on_click=lambda _: update_image_display(
+                            processor.apply_segmentation(
+                                method='kmeans',
+                                n_segments=int(kmeans_slider.value)
+                            )))
+    ], spacing=10)
+    # Watershed Panel
+    watershed_panel = ft.Column([
+        ft.Text("Watershed Segmentation", size=16, weight=ft.FontWeight.BOLD),
+        ft.ElevatedButton("Apply Watershed",
+                        on_click=lambda _: update_image_display(
+                            processor.apply_segmentation(method='watershed')))
+    ], spacing=10)
+    # Clustering Panel
+    clustering_slider = ft.Slider(min=2,max=20,value=10,)  # Default number of segmentslabel="Number of Clusters",
+    clustering_panel = ft.Column([
+        ft.Text("Clustering", size=16, weight=ft.FontWeight.BOLD),
+        clustering_slider,
+        ft.ElevatedButton("Apply Clustering",
+                        on_click=lambda _: update_image_display(
+                            processor.apply_segmentation(
+                                method='clustering',
+                                n_segments=int(clustering_slider.value)
+                            )))
+    ], spacing=10)
     segmentation_panel = ft.Column([
         ft.Text("Segmentation", size=16, weight=ft.FontWeight.BOLD),
-        segments_slider,
-        ft.Row([
-            ft.ElevatedButton("K-means", 
-                            on_click=lambda _: update_image_display(
-                                processor.apply_segmentation(
-                                    method='kmeans',
-                                    n_segments=int(segments_slider.value)
-                                ))),
-            ft.ElevatedButton("Watershed",
-                            on_click=lambda _: update_image_display(
-                                processor.apply_segmentation(method='watershed'))),
-        ], spacing=10),
-    ], spacing=10)
+        threshold_panel,
+        kmeans_panel,
+        watershed_panel,
+        clustering_panel
+    ], spacing=20)
 
     # Binary Operations (Logic and Sliders)
     def handle_morphological_operation(e):
@@ -353,6 +395,15 @@ def main(page: ft.Page):
         padding_color_field,
     ], spacing=10)
 
+    # Image Compression Panel
+    image_compressor_panel = ft.Column([
+        ft.Text("Image Compression", size=16, weight=ft.FontWeight.BOLD),
+        ft.ElevatedButton("RLE Compress", 
+                         on_click=lambda _: update_image_display(processor.rle_compress())),
+        ft.ElevatedButton("DCT Compress", 
+                         on_click=lambda _: update_image_display(processor.dct_compress())),
+    ], spacing=10)
+    
     # LEFT SECTION #
     tools_column = ft.Column(
         [
@@ -371,7 +422,8 @@ def main(page: ft.Page):
             enhancement_panel,
             segmentation_panel,
             binary_panel,
-            border_padding_panel
+            border_padding_panel,
+            image_compressor_panel
         ],
         spacing=20,
         visible=False,
@@ -414,6 +466,7 @@ def main(page: ft.Page):
         
         # Convert to PIL and resize to fit within 800x600
         pil_image = PILImage.fromarray(cv_image)
+        # processor.__init__.self.current_image = pil_image
         pil_image.thumbnail((800, 600))
         
         # Encode the image to Base64
@@ -426,6 +479,7 @@ def main(page: ft.Page):
             src_base64=img_base64,
             fit=ft.ImageFit.CONTAIN
         )
+
         page.update()
 
 
