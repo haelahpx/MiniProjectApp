@@ -53,11 +53,18 @@ class ImageProcessor:
         img_cyan[np.where(img_cyan > 255)] = 255
         return np.array(img_cyan, dtype=np.uint8)
     
-    def adjust_brightness_contrast(self, brightness=0, contrast=1):
+    def adjust_brightness(self, brightness=0):
         if self.current_image is None:
             return None
-        adjusted = cv2.convertScaleAbs(self.current_image, alpha=contrast, beta=brightness)
-        self.overlay_image = adjusted
+        adjusted = cv2.convertScaleAbs(self.current_image, beta=brightness)
+        self.current_image = adjusted
+        return adjusted
+
+    def adjust_contrast(self, contrast=1):
+        if self.current_image is None:
+            return None
+        adjusted = cv2.convertScaleAbs(self.current_image, alpha=contrast)
+        self.current_image = adjusted
         return adjusted
     
     def adjust_color_channels(self, red=1.0, green=1.0, blue=1.0):
@@ -383,3 +390,49 @@ class ImageProcessor:
         cv2.rectangle(result_img, top_left, bottom_right, (0, 255, 0), 2)
 
         return result_img
+    
+    # Simple alpha blending
+    def blend_images(self, alpha=0.5, x_offset=0, y_offset=0):
+        if self.current_image is None or self.overlay_image is None:
+            return None
+        
+        # Resize overlay image to match the base image size
+        overlay_resized = cv2.resize(self.overlay_image, 
+                                     (self.current_image.shape[1], self.current_image.shape[0]))
+        
+        # Simple alpha blending
+        blended_image = cv2.addWeighted(self.current_image, 1 - alpha, overlay_resized, alpha, 0)
+        return blended_image
+
+    # Advanced blending (for example, with different blend modes)
+    def advanced_blend(self, alpha=0.5, blend_mode='add'):
+        if self.current_image is None or self.overlay_image is None:
+            return None
+
+        # Resize overlay image to match the base image size
+        overlay_resized = cv2.resize(self.overlay_image, 
+                                     (self.current_image.shape[1], self.current_image.shape[0]))
+
+        # Perform the specified blending mode
+        if blend_mode == 'add':
+            blended_image = cv2.add(self.current_image, overlay_resized)
+        elif blend_mode == 'subtract':
+            blended_image = cv2.subtract(self.current_image, overlay_resized)
+        elif blend_mode == 'multiply':
+            blended_image = cv2.multiply(self.current_image, overlay_resized)
+        elif blend_mode == 'screen':
+            blended_image = cv2.bitwise_not(cv2.bitwise_not(self.current_image) | cv2.bitwise_not(overlay_resized))
+        else:
+            blended_image = self.current_image.copy()
+
+        # Apply alpha blending after blend mode if needed
+        return cv2.addWeighted(self.current_image, 1 - alpha, blended_image, alpha, 0)
+
+        # Method to scale the image based on width and height
+    def scale_image(self, width, height):
+        if self.current_image is None:
+            return None
+
+        # Resize image to the given width and height
+        scaled_image = cv2.resize(self.current_image, (width, height))
+        return scaled_image

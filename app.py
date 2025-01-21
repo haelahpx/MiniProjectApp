@@ -86,25 +86,19 @@ def main(page: ft.Page):
 
     # Brightness and Contrast
     brightness_slider = ft.Slider(
-        min=-100, max=100, value=0, label="Brightness",
-        on_change=lambda e: update_image_display(
-            processor.adjust_brightness_contrast(
-                brightness=brightness_slider.value
-            )
-        )
+        min=-50, max=50, value=0, label="Brightness",
     )
     contrast_slider = ft.Slider(
         min=0.1, max=3.0, value=1.0, label="Contrast",
-        on_change=lambda e: update_image_display(
-            processor.adjust_brightness_contrast(
-                contrast=contrast_slider.value
-            )
-        )
     )
     brightness_contrast_panel = ft.Column([
         ft.Text("Brightness & Contrast", size=16, weight=ft.FontWeight.BOLD),
         brightness_slider,
+        ft.ElevatedButton("Apply Brightness", 
+            on_click=lambda _: update_image_display(processor.adjust_brightness(brightness=brightness_slider.value))),
         contrast_slider,
+        ft.ElevatedButton("Apply Contrast", 
+            on_click=lambda _: update_image_display(processor.adjust_contrast(contrast=contrast_slider.value))),
     ], spacing=10)
 
     # Color Adjustment
@@ -156,6 +150,22 @@ def main(page: ft.Page):
             )
         )
     )
+    width_input = ft.TextField(
+        label="Width", 
+        value="800",  # Default value (can be customized)
+        keyboard_type=ft.KeyboardType.NUMBER,
+        on_change=lambda e: update_image_display(
+            processor.scale_image(int(e.control.value), int(height_input.value))
+        )
+    )
+    height_input = ft.TextField(
+        label="Height", 
+        value="600",  # Default value (can be customized)
+        keyboard_type=ft.KeyboardType.NUMBER,
+        on_change=lambda e: update_image_display(
+            processor.scale_image(int(width_input.value), int(e.control.value))
+        )
+    )
     transform_panel = ft.Column([
         ft.Text("Rotation", size=16, weight=ft.FontWeight.BOLD),
         rotation_slider,
@@ -170,6 +180,9 @@ def main(page: ft.Page):
             ft.IconButton(icon=ft.icons.CROP_ROTATE, 
                           on_click=lambda _: update_image_display(processor.flip('diagonal'))),  
         ], spacing=10),
+        ft.Text("Image Scaling", size=16, weight=ft.FontWeight.BOLD),
+        width_input,
+        height_input,
     ], spacing=10)
 
     # Color Effects
@@ -190,6 +203,41 @@ def main(page: ft.Page):
             )
         )
     )
+
+    # Image Blending
+    opacity_slider = ft.Slider(
+        min=0, max=1, value=0.5, label="Blending Opacity",
+        on_change=lambda e: update_image_display(
+            processor.blend_images(float(opacity_slider.value))
+        )
+    )
+    # Dropdown for selecting blending mode
+    blend_mode_dropdown = ft.Dropdown(
+        options=[
+            ft.dropdown.Option('Add'),
+            ft.dropdown.Option('Subtract'),
+            ft.dropdown.Option('Multiply'),
+            ft.dropdown.Option('Screen')
+        ],
+        label="Select Blend Mode",
+        on_change=lambda e: update_image_display(
+            processor.advanced_blend(
+                alpha=float(opacity_slider.value),
+                blend_mode=e.control.value.lower()  # Corrected to access the selected value directly
+            )
+        )
+    )
+
+    blending_panel = ft.Column([
+        ft.Text("Image Blending", size=16, weight=ft.FontWeight.BOLD),
+        ft.ElevatedButton("Add Overlay Image", 
+                         on_click=lambda _: overlay_picker.pick_files(
+                             allowed_extensions=["png", "jpg", "jpeg", "bmp"]
+                         )),
+        blend_mode_dropdown,
+        opacity_slider,
+    ], spacing=10)
+
     overlay_panel = ft.Column([
         ft.Text("Image Overlay", size=16, weight=ft.FontWeight.BOLD),
         ft.ElevatedButton("Add Overlay Image", 
@@ -468,6 +516,7 @@ def main(page: ft.Page):
             transform_panel,
             color_effects_panel,
             overlay_panel,
+            blending_panel,
             filters_panel,
             edge_panel,
             enhancement_panel,
