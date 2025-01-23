@@ -54,7 +54,8 @@ def main(page: ft.Page):
 
     # Download button
     def download_image(e):
-        if current_image_data:
+        if processor.current_image is not None:
+            current_image_data = processor.current_image
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"processed_image_{timestamp}.png"
             
@@ -315,19 +316,20 @@ def main(page: ft.Page):
     ], spacing=10)
 
     # Segmentation
-    threshold_slider = ft.Slider(min=0, max=255, value=127)
+    threshold_slider = ft.Slider(min=0, max=255, value=127,
+                                 on_change=lambda _: update_image_display(
+                                     processor.apply_segmentation(
+                                         method='threshold',
+                                         n_segments=int(threshold_slider.value)
+                                     )
+                                 ))
     kmeans_slider = ft.Slider(min=2, max=20, value=5)
     clustering_slider = ft.Slider(min=2, max=20, value=10)
     
     threshold_panel = ft.Column([
         ft.Text("Threshold Segmentation", size=16, weight=ft.FontWeight.BOLD),
         threshold_slider,
-        ft.ElevatedButton("Apply Threshold",
-                        on_click=lambda _: update_image_display(
-                            processor.apply_segmentation(
-                                method='threshold',
-                                n_segments=int(threshold_slider.value)
-                            )))
+        ft.ElevatedButton("Apply Threshold",)
     ], spacing=10)
     
     kmeans_panel = ft.Column([
